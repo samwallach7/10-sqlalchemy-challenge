@@ -7,13 +7,15 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 import datetime as dt
+from datetime import datetime
+import json
 
 # Database Setup
 engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
-# reflect an existing database into a new model
+# Reflect an existing database into a new model
 Base = automap_base()
-# reflect the tables
+# Reflect the tables
 Base.prepare(autoload_with=engine)
 
 # Save references to each table
@@ -23,16 +25,12 @@ Measurement = Base.classes.measurement
 # Create our session (link) from Python to the DB
 session = Session(engine)
 
-#################################################
 # Flask Setup
-#################################################
 app = Flask(__name__)
 
-
-
-#################################################
 # Flask Routes
-#################################################
+
+# Landing Page
 @app.route("/")
 def welcome():
     return (
@@ -45,6 +43,7 @@ def welcome():
         f"/api/v1.0/<start>/<end>"
     )
 
+# Precipitation Page
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     session = Session(engine)
@@ -68,7 +67,7 @@ def precipitation():
     
     return jsonify(all_prcp_data)
 
-
+# Stations Page
 @app.route("/api/v1.0/stations")
 def stations():
     session = Session(engine)
@@ -84,7 +83,7 @@ def stations():
     
     return jsonify(all_stations)
 
-
+# Temperature Observation Page
 @app.route("/api/v1.0/tobs")
 def temperature_observations():
     session = Session(engine)
@@ -104,53 +103,62 @@ def temperature_observations():
 
     return jsonify(usc00519281_previous_year)
 
+# Starting Date Page
 @app.route("/api/v1.0/<start>")
 def temperature_start(start):
     session = Session(engine)
-    dates_tobs = session.query(Measurement.date, Measurement.tobs).\
+    user_start_date = start
+    date_format = '%Y-%m-%d'
+    date_object = datetime.strptime(user_start_date, date_format)
+    
+    sel = [func.min(Measurement.tobs),
+       func.max(Measurement.tobs),
+       func.avg(Measurement.tobs)]
+    user_start_query = session.query(*sel).\
+        filter(Measurement.date >= date_object).\
         order_by(Measurement.date).all()
-    for date in dates_tobs:
-        search_term = date["date"]
+    session.close()
 
-        if search_term == start:
-            sel = [Measurement.date,
-                func.min(Measurement.tobs),
-                func.avg(Measurement.tobs),
-                func.max(Measurement.tobs)]
-            selected_tobs_data = session.query(*sel).\
-                filter(Measurement.date >= start).\
-                order_by(Measurement.date).all()
-            start_tobs = []
-            for sel in selected_tobs_data:
-                start_dict = {}
-                start_dict["min tobs"] = func.min(Measurement.tobs)
-                start_dict["avg tobs"] = func.avg(Measurement.tobs)
-                start_dict["max tobs"] = func.max(Measurement.tobs)
-                start_tobs.append(start_dict)
+    user_start_tobs = []
+    for min, max, avg in user_start_query:
+        user_start_dict = {}
+        user_start_dict["tmin"] = min
+        user_start_dict["tmax"] = max
+        user_start_dict["tavg"] = avg
+        user_start_tobs.append(user_start_dict)
 
-            
-            return jsonify(start_tobs)
-    return jsonify({"error": "Date {start} not found. Please enter date as 'yyyy-mm-dd'"}), 404
+    return jsonify(user_start_tobs)
+#    return jsonify({"error": "Date {start} not found. Please enter date as 'yyyy-mm-dd'"}), 404
 
+# Starting and Ending Date Page
 @app.route("/api/v1.0/<start>/<end>")
-def temperature_end(start, end):
+def temperature_start_end(start, end):
     session = Session(engine)
-    station_dates = session.query(Measurement.date, Measurement.tobs).\
+    user_start_date = start
+    user_end_date = end
+    date_format = '%Y-%m-%d'
+    start_date_object = datetime.strptime(user_start_date, date_format)
+    end_date_object = datetime.strptime(user_end_date, date_format)
+    
+    sel = [func.min(Measurement.tobs),
+       func.max(Measurement.tobs),
+       func.avg(Measurement.tobs)]
+    user_start_query = session.query(*sel).\
+        filter(Measurement.date >= start_date_object).\
+        filter(Measurement.date <= end_date_object).\
         order_by(Measurement.date).all()
-    for date in station_dates:
-        search_term = date["date"]
+    session.close()
 
-        if search_term == end:
-            sel = [Measurement.date,
-                func.min(Measurement.tobs),
-                func.avg(Measurement.tobs),
-                func.max(Measurement.tobs)]
-            start_end_tobs_data = session.query(*sel).\
-                filter(Measurement.date >= start).\
-                filter(Measurement.date <= end).\
-                order_by(Measurement.date).all()
-            return jsonify(start_end_tobs_data)
-    return jsonify({"error": "Date {start} or {end} not found. Please enter date as 'yyyy-mm-dd'"}), 404
+    user_start_end_tobs = []
+    for min, max, avg in user_start_query:
+        user_start_end_dict = {}
+        user_start_end_dict["tmin"] = min
+        user_start_end_dict["tmax"] = max
+        user_start_end_dict["tavg"] = avg
+        user_start_end_tobs.append(user_start_end_dict)
+
+    return jsonify(user_start_end_tobs)
+#   return jsonify({"error": "Date {start} or {end} not found. Please enter date as 'yyyy-mm-dd'"}), 404
 
 
 
