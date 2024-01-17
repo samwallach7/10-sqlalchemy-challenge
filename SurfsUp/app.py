@@ -39,8 +39,15 @@ def welcome():
         f"/api/v1.0/precipitation<br>"
         f"/api/v1.0/stations<br>"
         f"/api/v1.0/tobs<br>"
-        f"/api/v1.0/<start><br>"
-        f"/api/v1.0/<start>/<end>"
+        f"/api/v1.0/user_input_start_date<br>"
+        f"/api/v1.0/user_input_start_date/user_input_end_date<br>"
+        f"<br>"
+        f"Note: For the the user input start and end dates, please replace the text with a date (after 2010-01-01) using the format below<br>"
+        f"<br>"
+        f"For Start Date only: /api/v1.0/YYYY-MM-DD<br>"
+        f"For Start and End Date: /api/v1.0/YYYY-MM-DD/YYYY-MM-DD<br>"
+        f"<br>"
+        f"Thank you!"
     )
 
 # Precipitation Page
@@ -74,6 +81,7 @@ def stations():
     station_list = session.query(Station.station, Station.name).all()
     session.close()
 
+    # Creating a dictionary from the row data and append to a list
     all_stations = []
     for station, name in station_list:
         station_dict = {}
@@ -94,6 +102,7 @@ def temperature_observations():
         order_by(Measurement.date).all()
     session.close()
 
+    # Creating a dictionary from the row data and append to a list
     usc00519281_previous_year = []
     for date, tobs in most_active_station_tobs:
         most_active_dict = {}
@@ -115,10 +124,10 @@ def temperature_start(start):
        func.max(Measurement.tobs),
        func.avg(Measurement.tobs)]
     user_start_query = session.query(*sel).\
-        filter(Measurement.date >= date_object).\
-        order_by(Measurement.date).all()
+        filter(Measurement.date >= date_object).all()
     session.close()
 
+    # Creating a dictionary from the row data and append to a list
     user_start_tobs = []
     for min, max, avg in user_start_query:
         user_start_dict = {}
@@ -149,6 +158,7 @@ def temperature_start_end(start, end):
         order_by(Measurement.date).all()
     session.close()
 
+    # Creating a dictionary from the row data and append to a list
     user_start_end_tobs = []
     for min, max, avg in user_start_query:
         user_start_end_dict = {}
