@@ -1,14 +1,12 @@
 # Import the dependencies.
 from flask import Flask, jsonify
-import numpy as np
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 import datetime as dt
-from datetime import datetime
-import json
+from datetime import datetime, timedelta
 
 # Database Setup
 engine = create_engine("sqlite:///Resources/hawaii.sqlite")
@@ -117,14 +115,16 @@ def temperature_observations():
 def temperature_start(start):
     session = Session(engine)
     user_start_date = start
-    date_format = '%Y-%m-%d'
-    date_object = datetime.strptime(user_start_date, date_format)
+    date_format = "%Y-%m-%d"
+    # There were issues with the app returning the first day from the query 
+    # so the user input is being adjusted to one day prior. The query then starts after this date.
+    date_object = datetime.strptime(user_start_date, date_format) - timedelta(1)
     
     sel = [func.min(Measurement.tobs),
        func.max(Measurement.tobs),
        func.avg(Measurement.tobs)]
     user_start_query = session.query(*sel).\
-        filter(Measurement.date >= date_object).all()
+        filter(Measurement.date > date_object).all()
     session.close()
 
     # Creating a dictionary from the row data and append to a list
@@ -137,7 +137,6 @@ def temperature_start(start):
         user_start_tobs.append(user_start_dict)
 
     return jsonify(user_start_tobs)
-#    return jsonify({"error": "Date {start} not found. Please enter date as 'yyyy-mm-dd'"}), 404
 
 # Starting and Ending Date Page
 @app.route("/api/v1.0/<start>/<end>")
@@ -146,14 +145,16 @@ def temperature_start_end(start, end):
     user_start_date = start
     user_end_date = end
     date_format = '%Y-%m-%d'
-    start_date_object = datetime.strptime(user_start_date, date_format)
+    # There were issues with the app returning the first day from the query 
+    # so the user input is being adjusted to one day prior. The query then starts after this date.
+    start_date_object = datetime.strptime(user_start_date, date_format) - timedelta(1)
     end_date_object = datetime.strptime(user_end_date, date_format)
     
     sel = [func.min(Measurement.tobs),
        func.max(Measurement.tobs),
        func.avg(Measurement.tobs)]
     user_start_query = session.query(*sel).\
-        filter(Measurement.date >= start_date_object).\
+        filter(Measurement.date > start_date_object).\
         filter(Measurement.date <= end_date_object).\
         order_by(Measurement.date).all()
     session.close()
@@ -168,7 +169,6 @@ def temperature_start_end(start, end):
         user_start_end_tobs.append(user_start_end_dict)
 
     return jsonify(user_start_end_tobs)
-#   return jsonify({"error": "Date {start} or {end} not found. Please enter date as 'yyyy-mm-dd'"}), 404
 
 
 
